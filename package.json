@@ -1,0 +1,19 @@
+{
+	"dependencies": {
+		"axios": "^1.7.2",
+		"ioredis": "^5.4.1",
+		"node-schedule": "^2.1.1"
+	},
+	"devDependencies": {
+		"@types/ioredis": "^5.0.0",
+		"@types/node": "^20.14.9",
+		"@types/node-schedule": "^2.1.7",
+		"ts-node": "^10.9.2",
+		"typescript": "^5.5.2"
+	},
+	"scripts": {
+		"dev": "ts-node kob_opb.ts",
+		"start": "ts-node kob_opb.js",
+		"build": "tsc -p ."
+	}
+}
