@@ -13,7 +13,7 @@
 	},
 	"scripts": {
 		"dev": "ts-node kob_opb.ts",
-		"start": "ts-node kob_opb.js",
+		"start": "node kob_opb.js",
 		"build": "tsc -p ."
 	}
 }
