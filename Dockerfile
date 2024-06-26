@@ -16,7 +16,7 @@ RUN npm run build
 FROM node:18-alpine AS runner
 WORKDIR /usr/app
 ARG APP_ENV
-COPY --from=builder /app/build ./build
+COPY --from=builder /app/ ./
 COPY package.json ./
 RUN npm install -g pnpm
 RUN pnpm install --prod
