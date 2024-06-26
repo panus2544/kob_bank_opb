@@ -51,7 +51,7 @@ const PAYMENT_CODE_DICTIONARY = {
     "LHBA": "073"
 }
 // Create a Redis client
-// const redis = new Redis({ host: process.env.REDIS_HOST || 'localhost', port: 6379, password: process.env.REDIS_PASSWORD || '' });
+const redis = new Redis({ host: process.env.REDIS_HOST || 'localhost', port: 6379, password: process.env.REDIS_PASSWORD || '' });
 
 
 export class KobBankAdapter {
@@ -123,7 +123,7 @@ export class KobBankAdapter {
     async callApiBank() {
         return new Promise<AxiosResponse>(async (resolve, reject) => {
             try {
-                const scaperKobBank = {
+                const callApiBank = {
                     method: "POST",
                     maxBodyLength: Infinity,
                     url: `http://ec2-54-251-220-23.ap-southeast-1.compute.amazonaws.com/transaction/call_api/kbank`,
@@ -136,7 +136,7 @@ export class KobBankAdapter {
                     },
                     data: null,
                 };
-                const response = await axios(scaperKobBank);
+                const response = await axios(callApiBank);
                 resolve(response.data);
             } catch (e) {
                 reject({ status: false, message: "callApiBank failed!", error: e });
@@ -188,49 +188,31 @@ export class KobBankAdapter {
         });
     }
 }
-
-schedule.scheduleJob('12 * * * * *', async function() {
+// (async () => {
+schedule.scheduleJob('12 * * * * *', async function () {
     console.log('hey!');
 
-      
-    let lib = new KobBankAdapter()
-    // const cachedData = await redis.get('cache_kob_opb_last_sent');
 
-    // console.log('iv buffer', lib.ivMain = Buffer.from('6E639C164B4B9198', 'utf-8'));
+    let lib = new KobBankAdapter()
+    const lastestId = await redis.get('cache_kob_opb_last_sent');
+
     // await lib.callApiBank()
     setTimeout(async () => {
         const scraper = await lib.scaperKobBank()
-        // console.log("🚀 ~ setTimeout ~ scraper:", scraper)
+        console.log("🚀 ~ setTimeout ~ scraper:", scraper)
         scraper.data.forEach(async (element: any) => {
-            const data = lib.transfromToOneplaybet(element);
-            console.log('data ', data);
-            // const opb = await lib.sendOneAgent(data)
-            // console.log('opb response ', opb);
+            if (Number(element.id) > Number(lastestId)) {
+                const data = lib.transfromToOneplaybet(element);
+                console.log('data ', data);
+                // const opb = await lib.sendOneAgent(data)
+                // console.log('opb response ', opb);
+                lastId = element.id
+            }
         });
 
-        // await redis.set('cachedData', 105, 'EX', 3600);
+        let lastId = scraper.data.sort((a: ResponseKobBank, b: ResponseKobBank) => +b.id - +a.id);
+        await redis.set('cache_kob_opb_last_sent', lastId[0].id, 'EX', 3600);
     }, 3000);
 });
-// (async () => {
-    
-//     let lib = new KobBankAdapter()
-//     const cachedData = await redis.get('cache_kob_opb_last_sent');
-
-//     // console.log('iv buffer', lib.ivMain = Buffer.from('6E639C164B4B9198', 'utf-8'));
-//     // await lib.callApiBank()
-//     setTimeout(async () => {
-//         const scraper = await lib.scaperKobBank()
-//         console.log("🚀 ~ setTimeout ~ scraper:", scraper)
-//         scraper.data.forEach(async (element: any) => {
-//             const data = lib.transfromToOneplaybet(element);
-//             console.log('data ', data);
-//             // const opb = await lib.sendOneAgent(data)
-//             // console.log('opb response ', opb);
-//         });
-
-//         await redis.set('cachedData', 105, 'EX', 3600);
-//     }, 3000);
-//     // console.log('response ', scraper);
-
 // }
 // )()
