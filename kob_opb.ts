@@ -1,6 +1,8 @@
 import axios, { AxiosResponse } from 'axios';
 import schedule from 'node-schedule'
 import Redis from 'ioredis';
+import express from 'express';
+
 
 export interface OneplaybetHookDto {
     paymentDatetime: number; // เวลาทำรายการ
@@ -214,8 +216,23 @@ export class KobBankAdapter {
         });
     }
 }
-(async () => {
-    // schedule.scheduleJob('10 * * * * *', async function () {
+
+const app = express();
+const port = process.env.PORT || 8080;
+
+app.use(express.json());
+
+app.get('/', (req, res) => {
+    res.send('Hello Redis with Express.js and TypeScript!');
+});
+
+app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+});
+
+
+// (async () => {
+schedule.scheduleJob('10 * * * * *', async function () {
     console.log('hey! it works');
 
 
@@ -230,7 +247,6 @@ export class KobBankAdapter {
     //     console.log('error', error);
     // }
 
-    // setTimeout(async () => {
     const response = await lib.scaperKobBank()
     const scraper = response.data as ResponseKobBank
     // console.log("🚀 ~ setTimeout ~ scraper:", scraper)
@@ -265,6 +281,7 @@ export class KobBankAdapter {
         await redis.set('lastestTxnId', scraper.data[0].tx_id, 'EX', 86400);
         console.log('run first time use lastestTxnId', scraper.data[0].tx_id);
     }
-    // }, 3000);
-}
-)()
+})
+
+
+// )()
