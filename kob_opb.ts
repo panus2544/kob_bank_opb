@@ -189,12 +189,13 @@ export class KobBankAdapter {
     }
 }
 // (async () => {
-schedule.scheduleJob('12 * * * * *', async function () {
+schedule.scheduleJob('10 * * * * *', async function () {
     console.log('hey!');
 
 
     let lib = new KobBankAdapter()
     const lastestId = await redis.get('cache_kob_opb_last_sent');
+    console.log("🚀 ~ lastestId:", lastestId)
 
     // await lib.callApiBank()
     setTimeout(async () => {
@@ -204,8 +205,8 @@ schedule.scheduleJob('12 * * * * *', async function () {
             if (Number(element.id) > Number(lastestId)) {
                 const data = lib.transfromToOneplaybet(element);
                 console.log('data ', data);
-                // const opb = await lib.sendOneAgent(data)
-                // console.log('opb response ', opb);
+                const opb = await lib.sendOneAgent(data)
+                console.log('opb response ', opb);
                 lastId = element.id
             }
         });
