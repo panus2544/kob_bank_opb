@@ -195,7 +195,7 @@ export class KobBankAdapter {
     }
 
     async sendOneAgent(data?: OneplaybetHookDto) {
-        return new Promise(async (resolve, reject) => {
+        return new Promise<AxiosResponse>(async (resolve, reject) => {
             try {
                 const sendOneAgent = {
                     method: "POST",
@@ -238,7 +238,7 @@ schedule.scheduleJob('10 * * * * *', async function () {
 
     let lib = new KobBankAdapter()
     // const lastestId = '3dedd2ed41a01a0325fa35a8e17a7557' 
-    const lastestId = await redis.get('lastestTxnId');
+    const lastestId = await redis.get('lastTxnId');
     console.log("🚀 ~ lastestId:", lastestId)
 
     // try {
@@ -254,17 +254,17 @@ schedule.scheduleJob('10 * * * * *', async function () {
     if (lastestId) {
         const lastIndex = scraper.data.findIndex((element: DtoKobBank) => (element.tx_id) === (lastestId))
         // console.log("🚀 ~ setTimeout ~ lastIndex:", lastIndex)
-        const lastTxn = scraper.data.find((element: DtoKobBank) => (element.tx_id) === (lastestId))
 
-        if (scraper.data.slice(0, lastIndex).length > 0) {
+        if (lastIndex > 0) {
+            const lastTxn = scraper.data.slice(0, lastIndex)[0].tx_id
             scraper.data.slice(0, lastIndex).forEach(async (element: DtoKobBank) => {
                 // if (Number(element.id) > Number(lastestId)) {
                 const data = lib.transfromToOneplaybet(element, +scraper.bank_acc[0].acc_balance);
-                // console.log('data ', data);
                 if (data.formAccountCodeName !== '004') {
+                    console.log('data ', data);
                     try {
                         const opb = await lib.sendOneAgent(data)
-                        console.log('opb response ', opb);
+                        console.log('opb response ', opb.data);
                     } catch (error) {
                         console.log('error opb response', error);
                     }
@@ -274,12 +274,14 @@ schedule.scheduleJob('10 * * * * *', async function () {
 
                 // let lastId = scraper.data.sort((a: ResponseKobBank, b: ResponseKobBank) => +b.id - +a.id);
                 // await redis.set('cache_kob_opb_last_sent', lastId[0].id, 'EX', 86400);
-                await redis.set('lastestTxnId', lastTxn!.tx_id ?? lastestId, 'EX', 86400);
+                await redis.set('lastTxnId', lastTxn, 'EX', 86400);
             });
+        } else {
+            console.log('no transaction');
         }
     } else {
-        await redis.set('lastestTxnId', scraper.data[0].tx_id, 'EX', 86400);
-        console.log('run first time use lastestTxnId', scraper.data[0].tx_id);
+        await redis.set('lastTxnId', scraper.data[0].tx_id, 'EX', 86400);
+        console.log('run first time use lastTxnId', scraper.data[0].tx_id);
     }
 })
 
