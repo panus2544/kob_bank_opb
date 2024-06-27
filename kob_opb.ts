@@ -15,17 +15,38 @@ export interface OneplaybetHookDto {
     remainingBalance: null | number; // จำนวนเงินคงเหลือ
 }
 
-export interface ResponseKobBank {
-    id: string;
-    bank: string;
-    bankcolor: string;
-    time: string;
+// export interface ResponseKobBank {
+//     id: string;
+//     bank: string;
+//     bankcolor: string;
+//     time: string;
+//     channel: string;
+//     value: string;
+//     detail: string;
+//     atranferer: string;
+//     checktime: string;
+//     tranferer: string;
+// }
+
+export interface DtoKobBank {
+    tx_id: string;
     channel: string;
     value: string;
+    transferer: string;
     detail: string;
-    atranferer: string;
-    checktime: string;
-    tranferer: string;
+    transfer_when: string;
+}
+
+export interface ResponseKobBank {
+    bank_acc: { acc_number: string, acc_balance: string }[]
+    data: {
+        tx_id: string;
+        channel: string;
+        value: string;
+        transferer: string;
+        detail: string;
+        transfer_when: string;
+    }[]
 }
 
 const PAYMENT_CODE_DICTIONARY = {
@@ -53,12 +74,11 @@ const PAYMENT_CODE_DICTIONARY = {
 // Create a Redis client
 const redis = new Redis({ host: process.env.REDIS_HOST || 'localhost', port: 6379, password: process.env.REDIS_PASSWORD || '' });
 
-
 export class KobBankAdapter {
-    cookie: string;
+    // cookie: string;
 
     constructor() {
-        this.cookie = 'kob_session=9k1s953flm59ku7toa2k85mrhn9e9dhg; logon=889f2ed0c0016b935990dec7060187924bd664bbf8dc4a0f485302e7e5cd48b678957fb97b06ef50a0df402caa8d81494cfbf16f8543146cc7315ec0efd892d5gJ9qpadRJmwv6Y31C2Tzf%2FGrjrWIrLYmGTkDj%2BM6SMn%2BIM3JxHe0KpOGk755f7cb'
+        // this.cookie = 'kob_session=9k1s953flm59ku7toa2k85mrhn9e9dhg; logon=889f2ed0c0016b935990dec7060187924bd664bbf8dc4a0f485302e7e5cd48b678957fb97b06ef50a0df402caa8d81494cfbf16f8543146cc7315ec0efd892d5gJ9qpadRJmwv6Y31C2Tzf%2FGrjrWIrLYmGTkDj%2BM6SMn%2BIM3JxHe0KpOGk755f7cb'
     }
 
     private bankData = [
@@ -99,24 +119,24 @@ export class KobBankAdapter {
         return '';
     }
 
-    transfromToOneplaybet(data: ResponseKobBank): OneplaybetHookDto {
+    transfromToOneplaybet(data: DtoKobBank, remainingBalance: number): OneplaybetHookDto {
 
-        const patternDatetime: RegExp = /<span style="display:none;">(\d+)<\/span>/;
+        // const patternDatetime: RegExp = /<span style="display:none;">(\d+)<\/span>/;
 
         // Find the match of the pattern in the HTML
-        const timeFormat = data.time.match(patternDatetime);
-
+        // const timeFormat = data.time.match(patternDatetime);
         return {
-            paymentDatetime: Number(timeFormat ? timeFormat[1] : 0),
+            // paymentDatetime: Number(timeFormat ? timeFormat[1] : 0) * 1000,
+            paymentDatetime: new Date(data.transfer_when).getTime(),
             formAccountCodeName: this.checkTextForBankCode(data.detail),
-            formAccountNumber: data.atranferer,
+            formAccountNumber: data.transferer,
             amount: Number(data.value),
             paymentCodeName: 'KBANK',
             paymentAccountNumber: '1862450694',
-            oneagentCode: '',
+            oneagentCode: 'a303bd',
             remark: data.detail,
             channel: 'WEB',
-            remainingBalance: 0
+            remainingBalance: remainingBalance
         }
     }
 
@@ -132,7 +152,7 @@ export class KobBankAdapter {
                         accept: '*/*',
                         'accept-language': 'en-US,en;q=0.9',
                         'x-requested-with': 'XMLHttpRequest',
-                        cookie: this.cookie
+                        // cookie: this.cookie
                     },
                     data: null,
                 };
@@ -150,18 +170,22 @@ export class KobBankAdapter {
                 const scaperKobBank = {
                     method: "POST",
                     maxBodyLength: Infinity,
-                    url: `http://ec2-54-251-220-23.ap-southeast-1.compute.amazonaws.com/transaction/index/all/0/today/json`,
+                    url: `http://ec2-54-251-220-23.ap-southeast-1.compute.amazonaws.com/api/transfer`,
                     referrerPolicy: "strict-origin-when-cross-origin",
                     headers: {
                         accept: '*/*',
-                        'accept-language': 'en-US,en;q=0.9',
-                        'x-requested-with': 'XMLHttpRequest',
-                        cookie: this.cookie
+                        'content-type': 'application/json',
+                        // 'accept-language': 'en-US,en;q=0.9',
+                        // 'x-requested-with': 'XMLHttpRequest',
+                        // cookie: this.cookie
                     },
-                    data: null,
+                    data: JSON.stringify({
+                        "key": process.env.SECRET_KEY || 'gXzfMZUWwJlTChGb2Iqa',
+                        "bank_acc": process.env.BANK_ACC || "kbank_1862450694"
+                    }),
                 };
                 const response = await axios(scaperKobBank);
-                resolve(response.data);
+                resolve(response);
             } catch (e) {
                 reject({ status: false, message: "scaperKobBank failed!", error: e });
             }
@@ -177,6 +201,8 @@ export class KobBankAdapter {
                     url: `https://api-agent.oneplaybet.com/v1/payment/external-deposit/oneagent`,
                     headers: {
                         "Content-Type": "application/json; charset=UTF-8",
+                        "ext-payment-secret-key": 'Etl6m4n#YVO!9Z!zMkO%FvOLFk3Bni9t',
+                        "ext-payment-partner-prefix": 'XPBBKKAST'
                     },
                     data: JSON.stringify(data)
                 };
@@ -188,32 +214,57 @@ export class KobBankAdapter {
         });
     }
 }
-// (async () => {
-schedule.scheduleJob('10 * * * * *', async function () {
-    console.log('hey!');
+(async () => {
+    // schedule.scheduleJob('10 * * * * *', async function () {
+    console.log('hey! it works');
 
 
     let lib = new KobBankAdapter()
-    const lastestId = await redis.get('cache_kob_opb_last_sent');
+    // const lastestId = '3dedd2ed41a01a0325fa35a8e17a7557' 
+    const lastestId = await redis.get('lastestTxnId');
     console.log("🚀 ~ lastestId:", lastestId)
 
+    // try {
     // await lib.callApiBank()
-    setTimeout(async () => {
-        const scraper = await lib.scaperKobBank()
-        console.log("🚀 ~ setTimeout ~ scraper:", scraper)
-        scraper.data.forEach(async (element: any) => {
-            if (Number(element.id) > Number(lastestId)) {
-                const data = lib.transfromToOneplaybet(element);
-                console.log('data ', data);
-                const opb = await lib.sendOneAgent(data)
-                console.log('opb response ', opb);
-                lastId = element.id
-            }
-        });
+    // } catch (error) {
+    //     console.log('error', error);
+    // }
 
-        let lastId = scraper.data.sort((a: ResponseKobBank, b: ResponseKobBank) => +b.id - +a.id);
-        await redis.set('cache_kob_opb_last_sent', lastId[0].id, 'EX', 3600);
-    }, 3000);
-});
-// }
-// )()
+    // setTimeout(async () => {
+    const response = await lib.scaperKobBank()
+    const scraper = response.data as ResponseKobBank
+    // console.log("🚀 ~ setTimeout ~ scraper:", scraper)
+
+    if (lastestId) {
+        const lastIndex = scraper.data.findIndex((element: DtoKobBank) => (element.tx_id) === (lastestId))
+        // console.log("🚀 ~ setTimeout ~ lastIndex:", lastIndex)
+        const lastTxn = scraper.data.find((element: DtoKobBank) => (element.tx_id) === (lastestId))
+
+        if (scraper.data.slice(0, lastIndex).length > 0) {
+            scraper.data.slice(0, lastIndex).forEach(async (element: DtoKobBank) => {
+                // if (Number(element.id) > Number(lastestId)) {
+                const data = lib.transfromToOneplaybet(element, +scraper.bank_acc[0].acc_balance);
+                // console.log('data ', data);
+                if (data.formAccountCodeName !== '004') {
+                    try {
+                        const opb = await lib.sendOneAgent(data)
+                        console.log('opb response ', opb);
+                    } catch (error) {
+                        console.log('error opb response', error);
+                    }
+                }
+                // }
+                // });
+
+                // let lastId = scraper.data.sort((a: ResponseKobBank, b: ResponseKobBank) => +b.id - +a.id);
+                // await redis.set('cache_kob_opb_last_sent', lastId[0].id, 'EX', 86400);
+                await redis.set('lastestTxnId', lastTxn!.tx_id ?? lastestId, 'EX', 86400);
+            });
+        }
+    } else {
+        await redis.set('lastestTxnId', scraper.data[0].tx_id, 'EX', 86400);
+        console.log('run first time use lastestTxnId', scraper.data[0].tx_id);
+    }
+    // }, 3000);
+}
+)()
