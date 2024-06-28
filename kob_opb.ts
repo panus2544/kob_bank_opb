@@ -259,17 +259,19 @@ schedule.scheduleJob('10 * * * * *', async function () {
             const lastTxn = scraper.data.slice(0, lastIndex)[0].tx_id
             scraper.data.slice(0, lastIndex).forEach(async (element: DtoKobBank) => {
                 // if (Number(element.id) > Number(lastestId)) {
-                const data = lib.transfromToOneplaybet(element, +scraper.bank_acc[0].acc_balance);
-                if (data.formAccountCodeName !== '004') {
-                    console.log('data ', data);
-                    try {
-                        const opb = await lib.sendOneAgent(data)
-                        console.log('opb response ', opb.data);
-                    } catch (error) {
-                        console.log('error opb response', error);
+                if ("Transfer Deposit".includes(element.detail)) {
+                    const data = lib.transfromToOneplaybet(element, +scraper.bank_acc[0].acc_balance);
+                    if (data.formAccountCodeName !== '004') {
+                        console.log('data ', data);
+                        try {
+                            const opb = await lib.sendOneAgent(data)
+                            console.log('opb response ', opb.data);
+                        } catch (error) {
+                            console.log('error opb response', error);
+                        }
                     }
+                    // }
                 }
-                // }
                 // });
 
                 // let lastId = scraper.data.sort((a: ResponseKobBank, b: ResponseKobBank) => +b.id - +a.id);
