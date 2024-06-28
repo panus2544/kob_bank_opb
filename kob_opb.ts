@@ -259,7 +259,7 @@ schedule.scheduleJob('10 * * * * *', async function () {
             const lastTxn = scraper.data.slice(0, lastIndex)[0].tx_id
             scraper.data.slice(0, lastIndex).forEach(async (element: DtoKobBank) => {
                 // if (Number(element.id) > Number(lastestId)) {
-                if ("Transfer Deposit".includes(element.detail)) {
+                if (element.detail.includes('Transfer Deposit')) {
                     const data = lib.transfromToOneplaybet(element, +scraper.bank_acc[0].acc_balance);
                     if (data.formAccountCodeName !== '004') {
                         console.log('data ', data);
